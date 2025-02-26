@@ -1,1 +1,2 @@
 model/*.json
+zigHttp/.zig-cache*
