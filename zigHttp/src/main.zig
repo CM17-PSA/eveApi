@@ -11,6 +11,10 @@ pub fn main() !void {
         std.debug.print("An error occurred while resolving the IP address: {}\n", .{err});
         return;
     };
-    var server = try addr.listen(.{});
+    var server = addr.listen(.{ .reuse_address = true }) catch |err| { // Enable reuse
+        std.debug.print("Failed to start server on {s}:{d} - Error: {}\\n", .{ server_addr, server_port, err });
+        return err;
+    };
     serverRunTime.ServerStart(&server);
+    server.deinit();
 }
