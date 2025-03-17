@@ -1,4 +1,3 @@
-# Confirm ability to return current status of Eve to ensure that connections are being processed.
 
 Write-Output "Confirming ESI is responding on status check and reporting Server Version";
 
@@ -11,8 +10,8 @@ if($CoreStatus.StatusCode -ne 200)
 $Version = $CoreStatus.Content | ConvertFrom-Json | Select-Object -ExpandProperty server_version;
 Write-Output "ESI reporting Server Version $Version";
 
-$clientId = 'populate your own, look it up in the Eve docs to find how'
-$clientSecret = 'bad practice hardcoding values, but fuck it'
+$clientId = Get-Content ./clientId.txt
+$clientSecret = get-content ./clientsecret.txt
 $ongoing = $true
 
 
@@ -23,22 +22,23 @@ try
 	$codeChallenge = New-PKCE
 	$state = New-State
 	$expectedState = $state
+	#& ./zigHttp/zig-out/bin/zigHttp -AsJob
 } catch
 {
 	$fail = Write-Error $_
 	throw $fail
 }
-if((Get-ChildItem $PSScriptRoot/model).Count -eq 0)
-{
-	try
-	{
-		New-Authentication -state $state -codeChallenge $codeChallenge -clientID $clientId -clientSecret $clientSecret
-	} catch
-	{
-		$fail = Write-Error $_
-		throw $fail
-	}
-}
+#if((Get-ChildItem $PSScriptRoot/model).Count -eq 0)
+#{
+#	try
+#	{
+#		New-Authentication -state $state -codeChallenge $codeChallenge -clientID $clientId -clientSecret $clientSecret
+#	} catch
+#	{
+#		$fail = Write-Error $_
+#		throw $fail
+#	}
+#}
 
 enum Operations
 {
@@ -69,6 +69,7 @@ while($ongoing)
    {
 				$action = [Operations]::Shutdown
 				Write-Output "Gracefully Exiting..."
+				Invoke-WebRequest http://localhost:8000/shutdown
 				$ongoing = $false
 				break;
 			}

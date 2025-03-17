@@ -7,7 +7,7 @@ const handlers = @import("handlers.zig");
 pub fn ServerStart(server: *net.Server) void {
     while (true) {
         if (handlers.check_shutdown()) {
-            std.debug.print("SHutting down server gracefully.\n", .{});
+            std.debug.print("Shutting down server gracefully.\n", .{});
             break;
         }
         var connection = server.accept() catch |err| {

@@ -1,2 +1,4 @@
+clientsecret.txt
+clientId.txt
 model/*.json
 zigHttp/.zig-cache*

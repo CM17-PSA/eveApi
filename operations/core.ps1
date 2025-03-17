@@ -50,61 +50,61 @@ function Get-AuthorizationUrl
 		"esi-industry.read_character_mining.v1",
 		"esi-characterstats.read.v1"
 	)
-	$url = "https://login.eveonline.com/v2/oauth/authorize"
+	$url = "http://localhost:8000/auth/initiate"
 	$url += "?response_type=code"
-	$url += "&client_id=$clientId"
-	$url += "&redirect_uri=$($encodedRedirectUri)"
+	$url += "&clientId=$clientId"
+	$url += "&redirectUri=$($encodedRedirectUri)" 
 	$url += "&scope=$($scopes -join ' ')"
-	$url += "&code_challenge=$codeChallenge"
+	$url += "&codeChallenge=$codeChallenge"
 	$url += "&code_Challenge_method=S256"
 	$url += "&state=$state"
 
-	return $url
+	Invoke-WebRequest $url
 }
 
-function Start-Listener
-{
-	param (
-		[string]$redirectUri,
-		[string]$expectedState
-	)
-
-	$listener = New-Object System.Net.HttpListener
-	$listener.Prefixes.Add($redirectUri)
-	$listener.Start()
-
-	Write-Information "Listening for Callback..."
-
-	$context = $listener.GetContext()
-	Write-Information "Callback received..."
-	$queryString = $context.Request.Url.Query
-	Write-Information "Setting Response Code..."
-	$context.Response.StatusCode = 200
-	Write-Information "Closing session..."
-	$context.Response.Close()
-
-	$queryParams = @{}
-	Write-Information "Defining keys..."
-	$queryString.TrimStart('?') -split '&' | Foreach-Object {
-		$keyValue = $_ -split '='
-		if($keyValue.Length -eq 2)
-		{
-			Write-Debug "Saving $($keyValue[0]):$($keyValue[1])"
-			$queryParams[$keyValue[0]] = $keyValue[1]
-		}
-	}
-	$receivedState = $queryParams['state']
-	Write-Information "Confirmed state code received: $receivedState"
-	if($receivedState -ne $expectedState)
-	{
-		Write-Error "Error: State mismatch. Received: $receivedState, but expected $expectedState."
-		return $null
-	}
-
-	$authorizationCode = $queryParams['code']
-	Write-Information "Received: $authorizationCode"
-	return $authorizationCode
-}
+#function Start-Listener
+#{
+#	param (
+#		[string]$redirectUri,
+#		[string]$expectedState
+#	)
+#
+#	$listener = New-Object System.Net.HttpListener
+#	$listener.Prefixes.Add($redirectUri)
+#	$listener.Start()
+#
+#	Write-Information "Listening for Callback..."
+#
+#	$context = $listener.GetContext()
+#	Write-Information "Callback received..."
+#	$queryString = $context.Request.Url.Query
+#	Write-Information "Setting Response Code..."
+#	$context.Response.StatusCode = 200
+#	Write-Information "Closing session..."
+#	$context.Response.Close()
+#
+#	$queryParams = @{}
+#	Write-Information "Defining keys..."
+#	$queryString.TrimStart('?') -split '&' | Foreach-Object {
+#		$keyValue = $_ -split '='
+#		if($keyValue.Length -eq 2)
+#		{
+#			Write-Debug "Saving $($keyValue[0]):$($keyValue[1])"
+#			$queryParams[$keyValue[0]] = $keyValue[1]
+#		}
+#	}
+#	$receivedState = $queryParams['state']
+#	Write-Information "Confirmed state code received: $receivedState"
+#	if($receivedState -ne $expectedState)
+#	{
+#		Write-Error "Error: State mismatch. Received: $receivedState, but expected $expectedState."
+#		return $null
+#	}
+#
+#	$authorizationCode = $queryParams['code']
+#	Write-Information "Received: $authorizationCode"
+#	return $authorizationCode
+#}
 
 function Get-AccessToken
 {
@@ -135,31 +135,31 @@ function Get-AccessToken
 	return $response
 }
 
-function Refresh-Authentication
-{
-	param(
-		[parameter(Mandatory)]
-		[string]$clientId,
-		[parameter(Mandatory)]
-		[string]$refreshToken,
-		[parameter(Mandatory)]
-		[string]$codeVerifier
-	)
-
-	$url = 'https://login.eveonline.com/v2/oauth/token'
-	$headers = @{
-		'Content-Type' = 'application/x-www-form-urlencoded'
-	}
-	$body = @{
-		grant_type = 'refresh_token'
-		refresh_token = $refreshToken
-		client_id = $clientId
-		code_verifier = $codeVerifier
-	}
-	$response = Invoke-RestMethod -uri $url -Method Post -body $body -Headers $headers
-	$AuthenticatedCharacter = Set-CharacterDefinition -accessToken $response.access_token
-	Save-CharacterDefinition -accessToken $response.access_token -refreshToken $response.refresh_token -characterValidation $AuthenticatedCharacter -codeVerifier $codeChallenge.CodeVerifier
-}
+#function Refresh-Authentication
+#{
+#	param(
+#		[parameter(Mandatory)]
+#		[string]$clientId,
+#		[parameter(Mandatory)]
+#		[string]$refreshToken,
+#		[parameter(Mandatory)]
+#		[string]$codeVerifier
+#	)
+#
+#	$url = 'https://login.eveonline.com/v2/oauth/token'
+#	$headers = @{
+#		'Content-Type' = 'application/x-www-form-urlencoded'
+#	}
+#	$body = @{
+#		grant_type = 'refresh_token'
+#		refresh_token = $refreshToken
+#		client_id = $clientId
+#		code_verifier = $codeVerifier
+#	}
+#	$response = Invoke-RestMethod -uri $url -Method Post -body $body -Headers $headers
+#	$AuthenticatedCharacter = Set-CharacterDefinition -accessToken $response.access_token
+#	Save-CharacterDefinition -accessToken $response.access_token -refreshToken $response.refresh_token -characterValidation $AuthenticatedCharacter -codeVerifier $codeChallenge.CodeVerifier
+#}
 
 function Set-CharacterDefinition
 {
@@ -213,9 +213,9 @@ function New-Authentication
 	)
 	try
 	{
-		$authorizationUrl = Get-AuthorizationUrl -redirectUri 'http://localhost/indy_callback/' -codeChallenge $codeChallenge.codeChallenge -state $state
+		$authorizationUrl = Get-AuthorizationUrl -redirectUri 'http://localhost:8000/indy_callback/' -codeChallenge $codeChallenge.codeChallenge -state $state
 		Write-Output "Please visit this URL to authenticate: $authorizationUrl"
-		$authorizationCode = Start-Listener -redirectUri "http://localhost/indy_callback/" -expectedState $expectedState
+		#$authorizationCode = Start-Listener -redirectUri "http://localhost/indy_callback/" -expectedState $expectedState
 	} catch
 	{
 		$fail  = Write-Error $_
@@ -223,19 +223,19 @@ function New-Authentication
 	}
 
 
-	Write-Debug "Authorization code received: $authorizationCode"
-	try
-	{
-		$accessTokenResponse = Get-AccessToken -authorizationCode $authorizationCode -clientId $clientId -clientSecret $clientSecret -redirectUri 'http://localhost/indy_callback/' -codeVerifier $codeChallenge.CodeVerifier
-	} catch
-	{
-		$fail  = Write-Error $_
-		return $fail
-	}
-	Write-Debug "AccessToken: $($accessTokenResponse.access_token)"
-	Write-Output ($accessTokenResponse | ConvertTo-Json -depth 25)
-	$AuthenticatedCharacter = Set-CharacterDefinition -accessToken $accessTokenResponse.access_token
-	Save-CharacterDefinition -accessToken $accessTokenResponse.access_token -refreshToken $accessTokenResponse.refresh_token -characterValidation $AuthenticatedCharacter -codeVerifier $codeChallenge.CodeVerifier
+	#Write-Debug "Authorization code received: $authorizationCode"
+	#try
+	#{
+	#	$accessTokenResponse = Get-AccessToken -authorizationCode $authorizationCode -clientId $clientId -clientSecret $clientSecret -redirectUri 'http://localhost/indy_callback/' -codeVerifier $codeChallenge.CodeVerifier
+	#} catch
+	#{
+	#	$fail  = Write-Error $_
+	#	return $fail
+	#}
+	#Write-Debug "AccessToken: $($accessTokenResponse.access_token)"
+	#Write-Output ($accessTokenResponse | ConvertTo-Json -depth 25)
+	#$AuthenticatedCharacter = Set-CharacterDefinition -accessToken $accessTokenResponse.access_token
+	#Save-CharacterDefinition -accessToken $accessTokenResponse.access_token -refreshToken $accessTokenResponse.refresh_token -characterValidation $AuthenticatedCharacter -codeVerifier $codeChallenge.CodeVerifier
 }
 
 function Get-Character
